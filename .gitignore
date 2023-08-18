@@ -1,0 +1,42 @@
+# Build artifacts
+build/
+bin/
+obj/
+work/
+*.o
+*.a
+*.so
+*.dylib
+*.out
+
+# Simulator and EDA outputs
+work-obj08.cf
+work-obj93.cf
+*.cf
+*.vcd
+*.ghw
+*.fst
+*.wdb
+*.log
+nvc.log
+transcript
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+
+# C++ emulator build
+tools/emulator/talos_emu
+tools/emulator/*.o
+
+# Temporary editor files
+*~
+*.swp
+*.swo
+.DS_Store
+.idea/
+.vscode/
