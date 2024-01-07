@@ -133,8 +133,19 @@ def run_nvc_test(test, verbose=False):
             "message": f"Analysis failed:\n{res_a.stderr or res_a.stdout}"
         }
 
-    # Elaborate and Run
-    cmd_r = ["nvc", "-e", test["name"], "--run"]
+    # Elaborate
+    cmd_e = ["nvc", "-e", test["name"]]
+    res_e = subprocess.run(cmd_e, capture_output=True, text=True)
+    if res_e.returncode != 0:
+        return {
+            "name": test["name"],
+            "status": "FAIL",
+            "time_ms": (time.time() - start_time) * 1000,
+            "message": f"Elaboration failed:\n{res_e.stderr or res_e.stdout}"
+        }
+
+    # Run simulation
+    cmd_r = ["nvc", "-r", test["name"], "--stop-time=10us"]
     res_r = subprocess.run(cmd_r, capture_output=True, text=True)
     elapsed_ms = (time.time() - start_time) * 1000
 

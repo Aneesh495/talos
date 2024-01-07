@@ -53,6 +53,7 @@ architecture rtl of talos_divider is
     signal remainder_reg : unsigned(31 downto 0) := (others => '0');
 
     signal result_reg    : std_logic_vector(XLEN-1 downto 0) := (others => '0');
+    signal is_special    : std_logic := '0';
 
 begin
 
@@ -126,7 +127,8 @@ begin
                                 else
                                     result_reg <= src1; -- remainder is dividend
                                 end if;
-                                state_reg <= ST_DONE;
+                                is_special <= '1';
+                                state_reg  <= ST_DONE;
 
                             -- Special case: Signed Overflow (-2^31 / -1)
                             elsif is_signed and src1 = x"80000000" and src2 = x"FFFFFFFF" then
@@ -135,9 +137,11 @@ begin
                                 else
                                     result_reg <= x"00000000";
                                 end if;
-                                state_reg <= ST_DONE;
+                                is_special <= '1';
+                                state_reg  <= ST_DONE;
 
                             else
+                                is_special    <= '0';
                                 dividend_reg  <= div_a;
                                 divisor_reg   <= div_b;
                                 quotient_reg  <= (others => '0');
@@ -170,23 +174,24 @@ begin
                         end if;
 
                     when ST_DONE =>
-                        -- Apply sign negation if necessary
-                        if op_reg = MD_DIV or op_reg = MD_DIVU then
-                            if quot_sign_reg = '1' and result_reg = (result_reg'range => '0') then
-                                result_reg <= std_logic_vector(-signed(quotient_reg));
-                            elsif result_reg = (result_reg'range => '0') then
-                                result_reg <= std_logic_vector(quotient_reg);
+                        -- Compute and drive result directly
+                        if is_special = '1' then
+                            resp_res <= result_reg;
+                        elsif op_reg = MD_DIV or op_reg = MD_DIVU then
+                            if quot_sign_reg = '1' then
+                                resp_res <= std_logic_vector(-signed(quotient_reg));
+                            else
+                                resp_res <= std_logic_vector(quotient_reg);
                             end if;
                         else
-                            if rem_sign_reg = '1' and result_reg = (result_reg'range => '0') then
-                                result_reg <= std_logic_vector(-signed(remainder_reg));
-                            elsif result_reg = (result_reg'range => '0') then
-                                result_reg <= std_logic_vector(remainder_reg);
+                            if rem_sign_reg = '1' then
+                                resp_res <= std_logic_vector(-signed(remainder_reg));
+                            else
+                                resp_res <= std_logic_vector(remainder_reg);
                             end if;
                         end if;
 
                         resp_val    <= '1';
-                        resp_res    <= result_reg;
                         rob_idx_out <= rob_idx_reg;
                         rd_phys_out <= rd_phys_reg;
                         state_reg   <= ST_IDLE;

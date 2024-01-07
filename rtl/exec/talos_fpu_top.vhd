@@ -99,6 +99,11 @@ begin
         variable feq, flt   : boolean;
         variable flags      : std_logic_vector(4 downto 0);
         variable res        : std_logic_vector(31 downto 0);
+        variable sign_bit   : std_logic;
+        variable mag_u      : unsigned(31 downto 0);
+        variable lead_idx   : integer range 0 to 31;
+        variable exp_val    : integer;
+        variable man_val    : std_logic_vector(22 downto 0);
     begin
         if rst_n = '0' then
             misc_val   <= '0';
@@ -137,8 +142,34 @@ begin
                             -- Float to signed 32-bit int
                             res := std_logic_vector(to_signed(to_integer(unsigned(s1_f(22 downto 0))), 32));
                         when FPU_CVT_S_W =>
-                            -- Int to float
-                            res := x"40000000"; -- Basic normalized representation stub
+                            -- Int to float conversion
+                            if s1_f = x"00000000" then
+                                res := x"00000000";
+                            else
+                                sign_bit := s1_f(31);
+                                if sign_bit = '1' then
+                                    mag_u := unsigned(-signed(s1_f));
+                                else
+                                    mag_u := unsigned(s1_f);
+                                end if;
+
+                                lead_idx := 0;
+                                for i in 31 downto 0 loop
+                                    if mag_u(i) = '1' then
+                                        lead_idx := i;
+                                        exit;
+                                    end if;
+                                end loop;
+
+                                exp_val := 127 + lead_idx;
+                                if lead_idx >= 23 then
+                                    man_val := std_logic_vector(shift_right(mag_u, lead_idx - 23)(22 downto 0));
+                                else
+                                    man_val := std_logic_vector(shift_left(mag_u, 23 - lead_idx)(22 downto 0));
+                                end if;
+
+                                res := sign_bit & std_logic_vector(to_unsigned(exp_val, 8)) & man_val;
+                            end if;
                         when others =>
                             null;
                     end case;
