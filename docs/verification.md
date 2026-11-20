@@ -113,7 +113,7 @@ The software suite in `sw/` exercises both basic pipeline functionality and dema
 
 ## 6. Regression Test Runner (`tools/harness/runner.py`)
 
-The automated Python regression runner orchestrates compilation and execution:
+The Python regression runner uses NVC to analyze `tools/harness/rtl.f` in a fresh work library before compiling, elaborating, and running each selected testbench:
 
 ```bash
 # Run all 13 VHDL testbenches
@@ -121,11 +121,11 @@ python3 tools/harness/runner.py --suite=all
 
 # Run specific functional group
 python3 tools/harness/runner.py --suite=unit
-python3 tools/harness/runner.py --suite=core
-python3 tools/harness/runner.py --suite=soc
+python3 tools/harness/runner.py --suite=integration
+python3 tools/harness/runner.py --suite=integration --filter=tb_talos_core
 
-# Run with waveform generation enabled (.vcd output)
-python3 tools/harness/runner.py --suite=all --wave
+# Show simulation output for passing testbenches
+python3 tools/harness/runner.py --suite=all --verbose
 ```
 
 ---

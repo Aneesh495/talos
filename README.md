@@ -235,7 +235,7 @@ Synthesized using AMD Vivado ML Enterprise targeting the **AMD Kintex UltraScale
 ## Quickstart Guide
 
 ### Prerequisites
-- **VHDL Compiler/Simulator**: `nvc` (v1.12+ recommended) or `ghdl` (v4.0+).
+- **VHDL Compiler/Simulator**: `nvc` (v1.12+ recommended) for the automated suite.
 - **C++ Compiler**: `clang++` or `g++` supporting C++20.
 - **Python**: Python 3.10+ (standard library only; no external dependencies required).
 
@@ -267,7 +267,7 @@ python3 tools/dashboard/talos_monitor.py
 ### 4. Run Make Automation Targets
 ```bash
 make check          # Syntax check all VHDL-2008 RTL files
-make sim-all        # Compile and execute the full testbench suite
+make test           # Build the emulator and execute the full testbench suite
 make clean          # Remove simulation artifacts and build binaries
 ```
 

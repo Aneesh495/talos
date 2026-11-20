@@ -7,7 +7,9 @@ Verification Harness: Automated Regression Runner and Test Orchestrator
 import sys
 import os
 import argparse
+import shutil
 import subprocess
+import tempfile
 import time
 import json
 from pathlib import Path
@@ -104,14 +106,7 @@ INTEGRATION_TESTS = [
     }
 ]
 
-def check_nvc_available():
-    try:
-        res = subprocess.run(["nvc", "--version"], capture_output=True, text=True)
-        return res.returncode == 0
-    except FileNotFoundError:
-        return False
-
-def run_nvc_test(test, verbose=False):
+def run_nvc_test(test, nvc, verbose=False):
     start_time = time.time()
     vhd_path = test["vhd"]
     if not os.path.exists(vhd_path):
@@ -123,7 +118,7 @@ def run_nvc_test(test, verbose=False):
         }
 
     # Analyze testbench
-    cmd_a = ["nvc", "-a", vhd_path]
+    cmd_a = [*nvc, "-a", vhd_path]
     res_a = subprocess.run(cmd_a, capture_output=True, text=True)
     if res_a.returncode != 0:
         return {
@@ -134,7 +129,7 @@ def run_nvc_test(test, verbose=False):
         }
 
     # Elaborate
-    cmd_e = ["nvc", "-e", test["name"]]
+    cmd_e = [*nvc, "-e", test["name"]]
     res_e = subprocess.run(cmd_e, capture_output=True, text=True)
     if res_e.returncode != 0:
         return {
@@ -145,12 +140,13 @@ def run_nvc_test(test, verbose=False):
         }
 
     # Run simulation
-    cmd_r = ["nvc", "-r", test["name"], "--stop-time=10us"]
+    cmd_r = [*nvc, "-r", "--stop-time=10us", test["name"]]
     res_r = subprocess.run(cmd_r, capture_output=True, text=True)
     elapsed_ms = (time.time() - start_time) * 1000
 
     output = (res_r.stdout + "\n" + res_r.stderr).strip()
-    if res_r.returncode == 0 and "ERROR" not in output.upper():
+    pass_marker = f"[PASS] {test['name']} "
+    if res_r.returncode == 0 and pass_marker in output and "ERROR" not in output.upper():
         return {
             "name": test["name"],
             "status": "PASS",
@@ -162,10 +158,10 @@ def run_nvc_test(test, verbose=False):
             "name": test["name"],
             "status": "FAIL",
             "time_ms": elapsed_ms,
-            "message": output
+            "message": output or f"Simulation ended before reporting {pass_marker.strip()}"
         }
 
-def run_suite(tests, verbose=False):
+def run_suite(tests, nvc, verbose=False):
     passed = 0
     failed = 0
     skipped = 0
@@ -174,7 +170,7 @@ def run_suite(tests, verbose=False):
     print(f"\n{BOLD}{CYAN}=== Talos Microarchitecture Verification Regression ==={RESET}\n")
 
     for t in tests:
-        res = run_nvc_test(t, verbose)
+        res = run_nvc_test(t, nvc, verbose)
         results.append(res)
         name_str = f"{t['name']:<18}"
         desc_str = f"{t['description'][:52]:<54}"
@@ -229,7 +225,21 @@ def main():
     if args.filter:
         tests = [t for t in tests if args.filter in t["name"]]
 
-    success = run_suite(tests, args.verbose)
+    if not tests:
+        parser.error("no testbenches match the requested suite and filter")
+
+    simulator = shutil.which("nvc")
+    if simulator is None:
+        parser.error("nvc is required to run the VHDL testbenches")
+
+    repo_root = Path(__file__).resolve().parents[2]
+    os.chdir(repo_root)
+    with tempfile.TemporaryDirectory(prefix="talos-nvc-") as library:
+        nvc = [simulator, "--std=2008", f"--work=work:{Path(library) / 'work'}"]
+        rtl = subprocess.run([*nvc, "-a", "-f", "tools/harness/rtl.f"])
+        if rtl.returncode != 0:
+            sys.exit("Talos RTL analysis failed")
+        success = run_suite(tests, nvc, args.verbose)
     sys.exit(0 if success else 1)
 
 if __name__ == "__main__":

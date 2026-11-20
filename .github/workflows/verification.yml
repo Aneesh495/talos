@@ -1,0 +1,20 @@
+name: VHDL verification
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install NVC
+        run: |
+          package=nvc_1.23.0-1_amd64_ubuntu-24.04.deb
+          curl -fLsS -o "$package" "https://github.com/nickg/nvc/releases/download/r1.23.0/$package"
+          printf '%s  %s\n' 33d65eafb83d83352716895e44c116002f94d8a198a9486a3cee6df3e4fdfb89 "$package" | sha256sum -c
+          sudo apt-get install -y "./$package"
+      - run: make check emu
+      - run: python3 tools/harness/runner.py --suite=all
