@@ -9,7 +9,7 @@ jobs:
   verify:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Install NVC
         run: |
           package=nvc_1.23.0-1_amd64_ubuntu-24.04.deb
